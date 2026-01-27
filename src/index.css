@@ -142,6 +142,44 @@ body { margin: 0; }
 
 .simple { padding: 30px 0; }
 
+
+.auth { width: min(520px, 100%); margin: 0 auto; }
+.auth__header h2 { margin: 0 0 6px; }
+.auth__header p { margin: 0 0 16px; }
+
+.auth__form { display: grid; gap: 12px; }
+
+.field { display: grid; gap: 6px; }
+.field__label { font-weight: 700; font-size: 13px; color: #222; }
+
+.input {
+  width: 100%;
+  padding: 12px 12px;
+  border-radius: 12px;
+  border: 1px solid #ddd;
+  outline: none;
+}
+.input:focus { border-color: #111; }
+
+.inputRow { display: flex; gap: 10px; align-items: center; }
+.btn--sm { padding: 8px 10px; border-radius: 12px; }
+
+.btn--full { width: 100%; }
+
+.alert {
+  border: 1px solid #ffd3d3;
+  background: #fff5f5;
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+.check { display: flex; gap: 10px; align-items: center; user-select: none; }
+.field__hint { color: #666; font-size: 12px; margin-top: -2px; }
+
+.auth__footer { margin-top: 4px; }
+.auth__back { margin-top: 4px; }
+
+
 @media (max-width: 860px) {
   .hero__grid { grid-template-columns: 1fr; }
   .features { grid-template-columns: 1fr; }
