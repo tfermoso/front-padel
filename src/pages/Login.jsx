@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { apiFetch, setAccessToken } from "../lib/api";
 
 function isEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim());
@@ -8,20 +9,13 @@ function isEmail(value) {
 export default function Login() {
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-  });
-
-  const [ui, setUi] = useState({
-    loading: false,
-    error: "",
-    showPassword: false,
-  });
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [ui, setUi] = useState({ loading: false, error: "", showPassword: false });
 
   const canSubmit = useMemo(() => {
     const emailOk = isEmail(form.email);
-    const passOk = String(form.password).length >= 6;
+    // En tu ejemplo la password es "12345" => mínimo 5
+    const passOk = String(form.password).length >= 5;
     return emailOk && passOk && !ui.loading;
   }, [form.email, form.password, ui.loading]);
 
@@ -36,20 +30,21 @@ export default function Login() {
     setUi((s) => ({ ...s, loading: true, error: "" }));
 
     try {
-      // TODO: conectar con padel-api
-      // Ejemplo futuro:
-      // const res = await api.post("/auth/login", form)
-      // localStorage.setItem("token", res.token)
+      const data = await apiFetch("/auth/login", {
+        method: "POST",
+        body: { email: form.email, password: form.password },
+      });
 
-      // Simulación de login
-      await new Promise((r) => setTimeout(r, 600));
-      localStorage.setItem("token", "demo-token");
+      if (!data?.access_token) {
+        throw new Error("Respuesta inválida: falta access_token");
+      }
 
+      setAccessToken(data.access_token);
       navigate("/", { replace: true });
     } catch (err) {
       setUi((s) => ({
         ...s,
-        error: "No se pudo iniciar sesión. Revisa tus credenciales.",
+        error: err?.message || "No se pudo iniciar sesión.",
       }));
     } finally {
       setUi((s) => ({ ...s, loading: false }));
@@ -61,7 +56,7 @@ export default function Login() {
       <div className="auth">
         <div className="auth__header">
           <h2>Iniciar sesión</h2>
-          <p className="muted">Accede a tu cuenta para gestionar tu pádel.</p>
+          <p className="muted">Accede a tu cuenta.</p>
         </div>
 
         {ui.error ? <div className="alert">{ui.error}</div> : null}
@@ -73,7 +68,7 @@ export default function Login() {
               className="input"
               type="email"
               name="email"
-              placeholder="tu@email.com"
+              placeholder="pepe@gmail.com"
               value={form.email}
               onChange={onChange}
               autoComplete="email"
@@ -91,12 +86,12 @@ export default function Login() {
                 className="input"
                 type={ui.showPassword ? "text" : "password"}
                 name="password"
-                placeholder="••••••••"
+                placeholder="12345"
                 value={form.password}
                 onChange={onChange}
                 autoComplete="current-password"
                 required
-                minLength={6}
+                minLength={5}
               />
               <button
                 type="button"
@@ -108,10 +103,8 @@ export default function Login() {
                 {ui.showPassword ? "Ocultar" : "Ver"}
               </button>
             </div>
-            {form.password && form.password.length < 6 ? (
-              <small className="field__hint">
-                Mínimo 6 caracteres.
-              </small>
+            {form.password && form.password.length < 5 ? (
+              <small className="field__hint">Mínimo 5 caracteres.</small>
             ) : null}
           </label>
 
@@ -127,9 +120,7 @@ export default function Login() {
           </div>
 
           <div className="auth__back">
-            <Link className="link" to="/">
-              ← Volver a la landing
-            </Link>
+            <Link className="link" to="/">← Volver</Link>
           </div>
         </form>
       </div>

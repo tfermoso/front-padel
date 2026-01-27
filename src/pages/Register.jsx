@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { apiFetch } from "../lib/api";
 
 function isEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim());
@@ -9,8 +10,9 @@ export default function Register() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
-    name: "",
+    nombre: "",
     email: "",
+    dni: "",
     password: "",
     confirmPassword: "",
     acceptTerms: false,
@@ -24,26 +26,25 @@ export default function Register() {
   });
 
   const validations = useMemo(() => {
-    const nameOk = form.name.trim().length >= 2;
+    const nombreOk = form.nombre.trim().length >= 2;
     const emailOk = isEmail(form.email);
+    const dniOk = form.dni.trim().length >= 6; // validación mínima (ajústala si tenéis regla exacta)
     const passOk = String(form.password).length >= 6;
-    const matchOk = form.password === form.confirmPassword && form.confirmPassword.length > 0;
+    const matchOk =
+      form.password === form.confirmPassword && form.confirmPassword.length > 0;
     const termsOk = form.acceptTerms === true;
 
-    return { nameOk, emailOk, passOk, matchOk, termsOk };
+    return { nombreOk, emailOk, dniOk, passOk, matchOk, termsOk };
   }, [form]);
 
   const canSubmit = useMemo(() => {
-    const { nameOk, emailOk, passOk, matchOk, termsOk } = validations;
-    return nameOk && emailOk && passOk && matchOk && termsOk && !ui.loading;
+    const { nombreOk, emailOk, dniOk, passOk, matchOk, termsOk } = validations;
+    return nombreOk && emailOk && dniOk && passOk && matchOk && termsOk && !ui.loading;
   }, [validations, ui.loading]);
 
   function onChange(e) {
     const { name, value, type, checked } = e.target;
-    setForm((s) => ({
-      ...s,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+    setForm((s) => ({ ...s, [name]: type === "checkbox" ? checked : value }));
     setUi((s) => ({ ...s, error: "" }));
   }
 
@@ -52,22 +53,22 @@ export default function Register() {
     setUi((s) => ({ ...s, loading: true, error: "" }));
 
     try {
-      // TODO: conectar con padel-api
-      // Ejemplo futuro:
-      // await api.post("/auth/register", {
-      //   name: form.name,
-      //   email: form.email,
-      //   password: form.password
-      // })
+      await apiFetch("/auth/register", {
+        method: "POST",
+        body: {
+          nombre: form.nombre,
+          email: form.email,
+          dni: form.dni,
+          password: form.password,
+        },
+      });
 
-      // Simulación de registro
-      await new Promise((r) => setTimeout(r, 700));
-
+      // Registro OK -> a login
       navigate("/login", { replace: true });
     } catch (err) {
       setUi((s) => ({
         ...s,
-        error: "No se pudo crear la cuenta. Inténtalo de nuevo.",
+        error: err?.message || "No se pudo crear la cuenta.",
       }));
     } finally {
       setUi((s) => ({ ...s, loading: false }));
@@ -79,7 +80,7 @@ export default function Register() {
       <div className="auth">
         <div className="auth__header">
           <h2>Crear cuenta</h2>
-          <p className="muted">Regístrate para empezar a reservar y jugar.</p>
+          <p className="muted">Regístrate para empezar.</p>
         </div>
 
         {ui.error ? <div className="alert">{ui.error}</div> : null}
@@ -90,18 +91,16 @@ export default function Register() {
             <input
               className="input"
               type="text"
-              name="name"
-              placeholder="Tu nombre"
-              value={form.name}
+              name="nombre"
+              placeholder="Juan Perez"
+              value={form.nombre}
               onChange={onChange}
               autoComplete="name"
               required
               minLength={2}
             />
-            {form.name && !validations.nameOk ? (
-              <small className="field__hint">
-                Introduce al menos 2 caracteres.
-              </small>
+            {form.nombre && !validations.nombreOk ? (
+              <small className="field__hint">Mínimo 2 caracteres.</small>
             ) : null}
           </label>
 
@@ -111,7 +110,7 @@ export default function Register() {
               className="input"
               type="email"
               name="email"
-              placeholder="tu@email.com"
+              placeholder="juan@example.com"
               value={form.email}
               onChange={onChange}
               autoComplete="email"
@@ -123,13 +122,29 @@ export default function Register() {
           </label>
 
           <label className="field">
+            <span className="field__label">DNI</span>
+            <input
+              className="input"
+              type="text"
+              name="dni"
+              placeholder="12345678A"
+              value={form.dni}
+              onChange={onChange}
+              required
+            />
+            {form.dni && !validations.dniOk ? (
+              <small className="field__hint">DNI inválido (mín. 6 caracteres).</small>
+            ) : null}
+          </label>
+
+          <label className="field">
             <span className="field__label">Contraseña</span>
             <div className="inputRow">
               <input
                 className="input"
                 type={ui.showPassword ? "text" : "password"}
                 name="password"
-                placeholder="Mínimo 6 caracteres"
+                placeholder="password123"
                 value={form.password}
                 onChange={onChange}
                 autoComplete="new-password"
@@ -156,7 +171,6 @@ export default function Register() {
                 className="input"
                 type={ui.showConfirm ? "text" : "password"}
                 name="confirmPassword"
-                placeholder="Repite tu contraseña"
                 value={form.confirmPassword}
                 onChange={onChange}
                 autoComplete="new-password"
@@ -183,29 +197,23 @@ export default function Register() {
               checked={form.acceptTerms}
               onChange={onChange}
             />
-            <span>
-              Acepto los <span className="muted">(demo)</span> términos y condiciones
-            </span>
+            <span>Acepto los términos</span>
           </label>
           {!validations.termsOk ? (
             <small className="field__hint">Debes aceptar los términos.</small>
           ) : null}
 
           <button className="btn btn--primary btn--full" disabled={!canSubmit}>
-            {ui.loading ? "Creando cuenta..." : "Crear cuenta"}
+            {ui.loading ? "Creando..." : "Crear cuenta"}
           </button>
 
           <div className="auth__footer">
             <span className="muted">¿Ya tienes cuenta?</span>{" "}
-            <Link className="link" to="/login">
-              Iniciar sesión
-            </Link>
+            <Link className="link" to="/login">Iniciar sesión</Link>
           </div>
 
           <div className="auth__back">
-            <Link className="link" to="/">
-              ← Volver a la landing
-            </Link>
+            <Link className="link" to="/">← Volver</Link>
           </div>
         </form>
       </div>
