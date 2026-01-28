@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { apiFetch, setAccessToken } from "../lib/api";
+import { useAuth } from "../auth/AuthContext";
 
 function isEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim());
@@ -8,13 +9,14 @@ function isEmail(value) {
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [ui, setUi] = useState({ loading: false, error: "", showPassword: false });
 
   const canSubmit = useMemo(() => {
     const emailOk = isEmail(form.email);
-    // En tu ejemplo la password es "12345" => mínimo 5
     const passOk = String(form.password).length >= 5;
     return emailOk && passOk && !ui.loading;
   }, [form.email, form.password, ui.loading]);
@@ -35,12 +37,23 @@ export default function Login() {
         body: { email: form.email, password: form.password },
       });
 
-      if (!data?.access_token) {
-        throw new Error("Respuesta inválida: falta access_token");
-      }
+      if (!data?.access_token) throw new Error("Respuesta inválida: falta access_token");
+      if (!data?.rol) throw new Error("Respuesta inválida: falta rol");
+      if (!data?.user) throw new Error("Respuesta inválida: falta user");
 
+      // 1) token
       setAccessToken(data.access_token);
-      navigate("/", { replace: true });
+
+      // 2) usuario + rol (para rutas protegidas)
+      login({ user: data.user, rol: data.rol });
+
+      // 3) redirect inteligente SOLO aquí
+      const from = location.state?.from?.pathname;
+      if (from) {
+        navigate(from, { replace: true });
+      } else {
+        navigate(data.rol === "admin" ? "/admin" : "/app", { replace: true });
+      }
     } catch (err) {
       setUi((s) => ({
         ...s,

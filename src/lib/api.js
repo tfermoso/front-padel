@@ -1,55 +1,50 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_URL = import.meta.env.VITE_API_BASE_URL;
 
-export function getAccessToken() {
-  return localStorage.getItem("access_token");
-}
+// Token en memoria + persistencia
+let accessToken = localStorage.getItem("access_token");
 
 export function setAccessToken(token) {
-  localStorage.setItem("access_token", token);
+  accessToken = token || null;
+  if (accessToken) localStorage.setItem("access_token", accessToken);
+  else localStorage.removeItem("access_token");
 }
 
-export function clearAccessToken() {
-  localStorage.removeItem("access_token");
+export function getAccessToken() {
+  return accessToken;
 }
 
-export async function apiFetch(path, { method = "GET", body, headers } = {}) {
-  if (!BASE_URL) {
-    throw new Error("Falta VITE_API_BASE_URL en .env");
+export async function apiFetch(path, options = {}) {
+  const { method = "GET", body, headers, ...rest } = options;
+
+  const finalHeaders = {
+    "Content-Type": "application/json",
+    ...(headers || {}),
+  };
+
+  if (accessToken) {
+    finalHeaders.Authorization = `Bearer ${accessToken}`;
   }
 
-  const token = getAccessToken();
-
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(`${API_URL}${path}`, {
     method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(headers || {}),
-    },
+    headers: finalHeaders,
     body: body ? JSON.stringify(body) : undefined,
+    ...rest,
   });
 
-  // Intenta parsear JSON si existe
+  const text = await res.text();
   let data = null;
-  const contentType = res.headers.get("content-type") || "";
-  if (contentType.includes("application/json")) {
-    data = await res.json().catch(() => null);
-  } else {
-    const text = await res.text().catch(() => "");
-    data = text ? { message: text } : null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
   }
 
   if (!res.ok) {
-    // Mejor esfuerzo para mostrar mensaje del backend
     const msg =
-      data?.message ||
-      data?.error ||
-      data?.msg ||
-      `Error HTTP ${res.status}`;
-    const err = new Error(msg);
-    err.status = res.status;
-    err.data = data;
-    throw err;
+      (data && (data.message || data.error)) ||
+      `Error ${res.status}: ${res.statusText}`;
+    throw new Error(msg);
   }
 
   return data;
