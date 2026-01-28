@@ -612,6 +612,40 @@ body {
 .resSlot__meta {
   font-size: 12px
 }
+.resDetails {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  padding: 8px 10px;
+}
+
+.resSummary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-weight: 700;
+}
+
+.resSummary::-webkit-details-marker {
+  display: none;
+}
+
+.resChevron {
+  transition: transform 150ms ease;
+  opacity: 0.7;
+}
+
+.resDetails[open] .resChevron {
+  transform: rotate(180deg);
+}
+
+/* un poco de aire al abrir */
+.resDetails[open] .resSlots {
+  margin-top: 10px;
+}
 
 /* Topbar button (solo móvil) */
 .sidebarToggle {
